@@ -1704,6 +1704,52 @@ bool DRW_Vertex::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs, doub
     return buf->isGood();
 }
 
+// Full AutoCAD ACI -> packed 0xRRGGBB conversion for gradient colour stops.
+// ACI 7 is returned as white for dark CAD backgrounds.
+static dint32 hatchAci2rgb(int aci) {
+    static const int table[256] = {
+        -1,       0xFF0000, 0xFFFF00, 0x00FF00, 0x00FFFF, 0x0000FF, 0xFF00FF,
+        0xFFFFFF, 0x555555, 0xAAAAAA, 0xFF0000, 0xFF8080, 0xA60000, 0xA65353,
+        0x800000, 0x804040, 0x4C0000, 0x4C2626, 0x260000, 0x261313, 0xFF4000,
+        0xFF9F80, 0xA62900, 0xA66853, 0x802000, 0x805040, 0x4C1300, 0x4C3026,
+        0x260A00, 0x261813, 0xFF8000, 0xFFBF80, 0xA65300, 0xA67C53, 0x804000,
+        0x806040, 0x4C2600, 0x4C3926, 0x261300, 0x261D13, 0xFFBF00, 0xFFDF80,
+        0xA67C00, 0xA69153, 0x806000, 0x807040, 0x4C3900, 0x4C4326, 0x261D00,
+        0x262113, 0xFFFF00, 0xFFFF80, 0xA6A600, 0xA6A653, 0x808000, 0x808040,
+        0x4C4C00, 0x4C4C26, 0x262600, 0x262613, 0xBFFF00, 0xDFFF80, 0x7CA600,
+        0x91A653, 0x608000, 0x708040, 0x394C00, 0x434C26, 0x1D2600, 0x212613,
+        0x80FF00, 0xBFFF80, 0x53A600, 0x7CA653, 0x408000, 0x608040, 0x264C00,
+        0x394C26, 0x132600, 0x1D2613, 0x40FF00, 0x9FFF80, 0x29A600, 0x68A653,
+        0x208000, 0x508040, 0x134C00, 0x304C26, 0x0A2600, 0x182613, 0x00FF00,
+        0x80FF80, 0x00A600, 0x53A653, 0x008000, 0x408040, 0x004C00, 0x264C26,
+        0x002600, 0x132613, 0x00FF40, 0x80FF9F, 0x00A629, 0x53A668, 0x008020,
+        0x408050, 0x004C13, 0x264C30, 0x00260A, 0x132618, 0x00FF80, 0x80FFBF,
+        0x00A653, 0x53A67C, 0x008040, 0x408060, 0x004C26, 0x264C39, 0x002613,
+        0x13261D, 0x00FFBF, 0x80FFDF, 0x00A67C, 0x53A691, 0x008060, 0x408070,
+        0x004C39, 0x264C43, 0x00261D, 0x132621, 0x00FFFF, 0x80FFFF, 0x00A6A6,
+        0x53A6A6, 0x008080, 0x408080, 0x004C4C, 0x264C4C, 0x002626, 0x132626,
+        0x00BFFF, 0x80DFFF, 0x007CA6, 0x5391A6, 0x006080, 0x407080, 0x00394C,
+        0x26434C, 0x001D26, 0x132126, 0x0080FF, 0x80BFFF, 0x0053A6, 0x537CA6,
+        0x004080, 0x406080, 0x00264C, 0x26394C, 0x001326, 0x131D26, 0x0040FF,
+        0x809FFF, 0x0029A6, 0x5368A6, 0x002080, 0x405080, 0x00134C, 0x26304C,
+        0x000A26, 0x131826, 0x0000FF, 0x8080FF, 0x0000A6, 0x5353A6, 0x000080,
+        0x404080, 0x00004C, 0x26264C, 0x000026, 0x131326, 0x4000FF, 0x9F80FF,
+        0x2900A6, 0x6853A6, 0x200080, 0x504080, 0x13004C, 0x30264C, 0x0A0026,
+        0x181326, 0x8000FF, 0xBF80FF, 0x5300A6, 0x7C53A6, 0x400080, 0x604080,
+        0x26004C, 0x39264C, 0x130026, 0x1D1326, 0xBF00FF, 0xDF80FF, 0x7C00A6,
+        0x9153A6, 0x600080, 0x704080, 0x39004C, 0x43264C, 0x1D0026, 0x211326,
+        0xFF00FF, 0xFF80FF, 0xA600A6, 0xA653A6, 0x800080, 0x804080, 0x4C004C,
+        0x4C264C, 0x260026, 0x261326, 0xFF00BF, 0xFF80DF, 0xA6007C, 0xA65391,
+        0x800060, 0x804070, 0x4C0039, 0x4C2643, 0x26001D, 0x261321, 0xFF0080,
+        0xFF80BF, 0xA60053, 0xA6537C, 0x800040, 0x804060, 0x4C0026, 0x4C2639,
+        0x260013, 0x26131D, 0xFF0040, 0xFF809F, 0xA60029, 0xA65368, 0x800020,
+        0x804050, 0x4C0013, 0x4C2630, 0x26000A, 0x261318, 0x545454, 0x767676,
+        0x989898, 0xBBBBBB, 0xDDDDDD, 0xFFFFFF};
+    if (aci < 0 || aci > 255)
+        return -1;
+    return table[aci];
+}
+
 void DRW_Hatch::parseCode(int code, dxfReader *reader){
     switch (code) {
     case 2:
@@ -1729,15 +1775,27 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         }
         break;
     case 10:
-        if (pt) pt->basePoint.x = reader->getDouble();
-        else if (pline) {
+        if (spline) {
+            DRW_Coord *controlPoint = new DRW_Coord();
+            controlPoint->x = reader->getDouble();
+            controlPoint->y = 0.0;
+            controlPoint->z = 0.0;
+            spline->controllist.push_back(controlPoint);
+        } else if (pt) {
+            pt->basePoint.x = reader->getDouble();
+        } else if (pline) {
             plvert = pline->addVertex();
             plvert->x = reader->getDouble();
         }
         break;
     case 20:
-        if (pt) pt->basePoint.y = reader->getDouble();
-        else if (plvert) plvert ->y = reader->getDouble();
+        if (spline && !spline->controllist.empty()) {
+            spline->controllist.back()->y = reader->getDouble();
+        } else if (pt) {
+            pt->basePoint.y = reader->getDouble();
+        } else if (plvert) {
+            plvert->y = reader->getDouble();
+        }
         break;
     case 11:
         if (line) line->secPoint.x = reader->getDouble();
@@ -1748,14 +1806,21 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         else if (ellipse) ellipse->secPoint.y = reader->getDouble();
         break;
     case 40:
-        if (arc) arc->radious = reader->getDouble();
-        else if (ellipse) ellipse->ratio = reader->getDouble();
+        if (spline)
+            spline->knotslist.push_back(reader->getDouble());
+        else if (arc)
+            arc->radious = reader->getDouble();
+        else if (ellipse)
+            ellipse->ratio = reader->getDouble();
         break;
     case 41:
         scale = reader->getDouble();
         break;
     case 42:
-        if (plvert) plvert ->bulge = reader->getDouble();
+        if (spline)
+            spline->weightlist.push_back(reader->getDouble());
+        else if (plvert)
+            plvert->bulge = reader->getDouble();
         break;
     case 50:
         if (arc) arc->staangle = reader->getDouble()/ARAD;
@@ -1769,8 +1834,42 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         angle = reader->getDouble();
         break;
     case 73:
-        if (arc) arc->isccw = reader->getInt32();
-        else if (pline) pline->flags = reader->getInt32();
+        if (spline) {
+            int rational = reader->getInt32();
+            if (rational)
+                spline->flags |= 4;
+        } else if (arc) {
+            arc->isccw = reader->getInt32();
+        } else if (pline) {
+            pline->flags = reader->getInt32();
+        }
+        break;
+    case 74:
+        if (spline) {
+            int periodic = reader->getInt32();
+            if (periodic)
+                spline->flags |= 2;
+        } else {
+            reader->getInt32();
+        }
+        break;
+    case 94:
+        if (spline)
+            spline->degree = reader->getInt32();
+        else
+            reader->getInt32();
+        break;
+    case 95:
+        if (spline)
+            spline->nknots = reader->getInt32();
+        else
+            reader->getInt32();
+        break;
+    case 96:
+        if (spline)
+            spline->ncontrol = reader->getInt32();
+        else
+            reader->getInt32();
         break;
     case 75:
         hstyle = reader->getInt32();
@@ -1796,7 +1895,10 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
             clearEntities();
             pline = new DRW_LWPolyline;
             loop->objlist.push_back(pline);
-        } else ispol = false;
+        } else {
+            ispol = false;
+            clearEntities();
+        }
         break;
     case 93:
         if (pline) pline->vertexnum = reader->getInt32();
@@ -1804,6 +1906,73 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         break;
     case 98: //seed points ??
         clearEntities();
+        break;
+    /* AcDbHatch gradient subclass, DXF codes 450-470/63/421 */
+    case 450:
+        isGradient = reader->getInt32();
+        gradientColors.clear();
+        break;
+    case 451: // reserved
+        reader->getInt32();
+        break;
+    case 452:
+        singleColorGrad = reader->getInt32();
+        break;
+    case 453: // number of colour stops; stops accumulate via 463/63/421
+        gradientColors.reserve(reader->getInt32());
+        break;
+    case 460:
+        gradientAngle = reader->getDouble() * ARAD; /* radians -> degrees */
+        break;
+    case 461:
+        gradientShift = reader->getDouble();
+        break;
+    case 462:
+        gradientTint = reader->getDouble();
+        break;
+    case 463: { // colour-stop position: begins a new colour stop
+        GradientColorData gc;
+        gc.unkDouble = reader->getDouble();
+        gc.unkShort = 0;
+        gc.rgb = -1; /* sentinel: unset, filled by code 63/421 */
+        gc.ignored = 0;
+        gradientColors.push_back(gc);
+        break;
+    }
+    case 63: { // colour-stop ACI colour (fallback if no true colour given)
+        int aci = reader->getInt32();
+        if (gradientColors.empty()) {
+            GradientColorData gc;
+            gc.unkDouble = 0.0;
+            gc.unkShort = 0;
+            gc.rgb = -1;
+            gc.ignored = 0;
+            gradientColors.push_back(gc);
+        }
+        GradientColorData &gc = gradientColors.back();
+        gc.unkShort = static_cast<duint16>(aci);
+        if (gc.rgb < 0) { /* only if 421 true colour not seen */
+            dint32 r = hatchAci2rgb(aci);
+            if (r >= 0)
+                gc.rgb = r;
+        }
+        break;
+    }
+    case 421: { // colour-stop 24-bit true colour (preferred source)
+        dint32 rgb = reader->getInt32();
+        if (gradientColors.empty()) {
+            GradientColorData gc;
+            gc.unkDouble = 0.0;
+            gc.unkShort = 0;
+            gc.rgb = -1;
+            gc.ignored = 0;
+            gradientColors.push_back(gc);
+        }
+        gradientColors.back().rgb = rgb;
+        break;
+    }
+    case 470:
+        gradientName = reader->getUtf8String();
         break;
     default:
         DRW_Point::parseCode(code, reader);
@@ -1827,32 +1996,35 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
 
     //Gradient data, RLZ: is ok or if grad > 0 continue read ?
     if (version > DRW::AC1015) { //2004+
-        dint32 isGradient = buf->getBitLong();
+        isGradient = buf->getBitLong();
         DRW_DBG("is Gradient: "); DRW_DBG(isGradient);
         dint32 res = buf->getBitLong();
         DRW_DBG(" reserved: "); DRW_DBG(res);
-        double gradAngle = buf->getBitDouble();
-        DRW_DBG(" Gradient angle: "); DRW_DBG(gradAngle);
-        double gradShift = buf->getBitDouble();
-        DRW_DBG(" Gradient shift: "); DRW_DBG(gradShift);
-        dint32 singleCol = buf->getBitLong();
-        DRW_DBG("\nsingle color Grad: "); DRW_DBG(singleCol);
-        double gradTint = buf->getBitDouble();
-        DRW_DBG(" Gradient tint: "); DRW_DBG(gradTint);
+        gradientAngle = buf->getBitDouble() * ARAD; /* DWG stores radians, convert to degrees like DXF */
+        DRW_DBG(" Gradient angle: "); DRW_DBG(gradientAngle);
+        gradientShift = buf->getBitDouble();
+        DRW_DBG(" Gradient shift: "); DRW_DBG(gradientShift);
+        singleColorGrad = buf->getBitLong();
+        DRW_DBG("\nsingle color Grad: "); DRW_DBG(singleColorGrad);
+        gradientTint = buf->getBitDouble();
+        DRW_DBG(" Gradient tint: "); DRW_DBG(gradientTint);
         dint32 numCol = buf->getBitLong();
         DRW_DBG(" num colors: "); DRW_DBG(numCol);
+        gradientColors.clear();
         for (dint32 i = 0 ; i < numCol; ++i){
-            double unkDouble = buf->getBitDouble();
-            DRW_DBG("\nunkDouble: "); DRW_DBG(unkDouble);
-            duint16 unkShort = buf->getBitShort();
-            DRW_DBG(" unkShort: "); DRW_DBG(unkShort);
-            dint32 rgbCol = buf->getBitLong();
-            DRW_DBG(" rgb color: "); DRW_DBG(rgbCol);
-            duint8 ignCol = buf->getRawChar8();
-            DRW_DBG(" ignored color: "); DRW_DBG(ignCol);
+            GradientColorData gc;
+            gc.unkDouble = buf->getBitDouble();
+            DRW_DBG("\nunkDouble: "); DRW_DBG(gc.unkDouble);
+            gc.unkShort = buf->getBitShort();
+            DRW_DBG(" unkShort: "); DRW_DBG(gc.unkShort);
+            gc.rgb = buf->getBitLong();
+            DRW_DBG(" rgb color: "); DRW_DBG(gc.rgb);
+            gc.ignored = buf->getRawChar8();
+            DRW_DBG(" ignored color: "); DRW_DBG(gc.ignored);
+            gradientColors.push_back(gc);
         }
-        UTF8STRING gradName = sBuf->getVariableText(version, false);
-        DRW_DBG("\ngradient name: "); DRW_DBG(gradName.c_str()); DRW_DBG("\n");
+        gradientName = sBuf->getVariableText(version, false);
+        DRW_DBG("\ngradient name: "); DRW_DBG(gradientName.c_str()); DRW_DBG("\n");
     }
     basePoint.z = buf->getBitDouble();
     extPoint = buf->get3BitDouble();
@@ -2088,8 +2260,9 @@ void DRW_Spline::parseCode(int code, dxfReader *reader){
     case 40:
         knotslist.push_back(reader->getDouble());
         break;
-//    case 41:
-//        break;
+    case 41:
+        weightlist.push_back(reader->getDouble());
+        break;
     default:
         DRW_Entity::parseCode(code, reader);
         break;
@@ -2154,7 +2327,9 @@ bool DRW_Spline::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
         DRW_Coord* crd = new DRW_Coord(buf->get3BitDouble());
         controllist.push_back(crd);
         if (weight){
-            DRW_DBG("\n w: "); DRW_DBG(buf->getBitDouble()); //RLZ Warning: D (BD or RD)
+            double w = buf->getBitDouble();
+            DRW_DBG("\n w: "); DRW_DBG(w); //RLZ Warning: D (BD or RD)
+            weightlist.push_back(w);
         }
     }
     fitlist.reserve(nfit);

@@ -890,6 +890,7 @@ public:
     double tolfit;            /*!< fit point tolerance, code 44, default 0.0000001 */
 
     std::vector<double> knotslist;           /*!< knots list, code 40 */
+    std::vector<double> weightlist;          /*!< weights list, code 41 */
     std::vector<DRW_Coord *> controllist;  /*!< control points list, code 10, 20 & 30 */
     std::vector<DRW_Coord *> fitlist;      /*!< fit points list, code 11, 21 & 31 */
 
@@ -948,6 +949,11 @@ public:
         solid = hpattern = 1;
         deflines = doubleflag = 0;
         loop = NULL;
+        isGradient = 0;
+        gradientAngle = 0.0;
+        gradientShift = 0.0;
+        singleColorGrad = 0;
+        gradientTint = 0.0;
         clearEntities();
     }
 
@@ -978,6 +984,21 @@ public:
     double angle;              /*!< hatch pattern angle, code 52 */
     double scale;              /*!< hatch pattern scale, code 41 */
     int deflines;              /*!< number of pattern definition lines, code 78 */
+
+    /* Gradient fill data (DXF codes 450-470 / DWG 2004+ gradient block) */
+    int isGradient;            /*!< gradient enabled flag, code 450, 0=solid fill, 1=gradient */
+    UTF8STRING gradientName;   /*!< gradient definition name, code 470, e.g. "LINEAR" */
+    double gradientAngle;      /*!< gradient rotation angle in DEGREES, code 460 (radians in file, *ARAD here) */
+    double gradientShift;      /*!< gradient "centered" definition / shift 0..1, code 461 */
+    int singleColorGrad;       /*!< colour mode, code 452: 0=two-colour, 1=single-colour/tint */
+    double gradientTint;       /*!< tint value for single-colour gradient, code 462 */
+    struct GradientColorData {
+        double unkDouble;      /*!< colour-stop position 0..1 (DXF code 463) */
+        duint16 unkShort;      /*!< colour-stop ACI colour (DXF code 63) */
+        dint32 rgb;            /*!< 24-bit packed RGB (0xRRGGBB) colour stop (DXF code 421); -1 if unset */
+        duint8 ignored;
+    };
+    std::vector<GradientColorData> gradientColors; /*!< gradient colour stops, codes 463/63/421 */
 
     std::vector<DRW_HatchLoop *> looplist;  /*!< polyline list */
 

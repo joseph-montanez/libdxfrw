@@ -57,3 +57,4 @@ src/intern/.dirstamp
 # Docker build outputs
 *.tar.gz
 dxfrw-*.tar.gz
+.DS_Store

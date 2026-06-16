@@ -307,9 +307,6 @@ public:
   std::string handlePlotS; /*!< Hard-pointer ID/handle of plotstyle, code 390 */
   std::string
       handleMaterialS; /*!< Hard-pointer ID/handle of materialstyle, code 347 */
-  int transparency;    /*!< layer transparency, code 440: 0=opaque,
-                          1-90=%transparent, -1=not set */
-                       /*only used for read dwg*/
   dwgHandle lTypeH;
 };
 

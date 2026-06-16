@@ -477,13 +477,39 @@ std::string DRW_ExtConverter::convertByiconv(const char *in_encode,
     const int BUF_SIZE = 1000;
     static char in_buf[BUF_SIZE], out_buf[BUF_SIZE];
 
-	char *in_ptr = in_buf;
-	char *out_ptr = out_buf;
-    strncpy(in_buf, s->c_str(), BUF_SIZE);
+    // Ensure buffers are zero-initialized
+    std::memset(in_buf, 0, BUF_SIZE);
+    std::memset(out_buf, 0, BUF_SIZE);
 
-    iconv_t ic;
-    ic = iconv_open(out_encode, in_encode);
-    size_t il = BUF_SIZE-1, ol = BUF_SIZE-1;
+    const char *norm_in = in_encode;
+    const char *norm_out = out_encode;
+
+    // Map common non-standard encoding page names to standard ones supported by iconv
+    if (std::strcmp(norm_in, "UTF8") == 0) norm_in = "UTF-8";
+    if (std::strcmp(norm_out, "UTF8") == 0) norm_out = "UTF-8";
+    if (std::strcmp(norm_in, "SJIS") == 0) norm_in = "SHIFT_JIS";
+    if (std::strcmp(norm_out, "SJIS") == 0) norm_out = "SHIFT_JIS";
+    if (std::strcmp(norm_in, "ANSI_1252") == 0) norm_in = "CP1252";
+    if (std::strcmp(norm_out, "ANSI_1252") == 0) norm_out = "CP1252";
+
+    iconv_t ic = iconv_open(norm_out, norm_in);
+    if (ic == (iconv_t)-1) {
+        // Fallback to original parameters if normalized ones fail
+        ic = iconv_open(out_encode, in_encode);
+    }
+
+    if (ic == (iconv_t)-1) {
+        // If still failed, do NOT call iconv() to avoid segmentation fault/crash.
+        // Return original string safely.
+        return *s;
+    }
+
+    std::strncpy(in_buf, s->c_str(), BUF_SIZE - 1);
+    char *in_ptr = in_buf;
+    char *out_ptr = out_buf;
+    size_t il = std::strlen(in_ptr);
+    size_t ol = BUF_SIZE - 1;
+
     iconv(ic , (char**)&in_ptr, &il, &out_ptr, &ol);
     iconv_close(ic);
 

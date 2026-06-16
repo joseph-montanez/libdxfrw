@@ -283,6 +283,7 @@ public:
         plotF = true; // default TRUE (plot yes)
         lWeight = DRW_LW_Conv::widthDefault; // default BYDEFAULT (dxf -3, dwg 31)
         color24 = -1; //default -1 not set
+        transparency = -1; //default -1 not set (0=opaque, 1-90=%transparent)
         DRW_TableEntry::reset();
     }
 
@@ -298,6 +299,7 @@ public:
     enum DRW_LW_Conv::lineWidth lWeight; /*!< layer lineweight, code 370 */
     std::string handlePlotS;        /*!< Hard-pointer ID/handle of plotstyle, code 390 */
     std::string handleMaterialS;        /*!< Hard-pointer ID/handle of materialstyle, code 347 */
+    int transparency;                    /*!< layer transparency, code 440: 0=opaque, 1-90=%transparent, -1=not set */
 /*only used for read dwg*/
     dwgHandle lTypeH;
 };

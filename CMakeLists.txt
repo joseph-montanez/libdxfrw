@@ -10,8 +10,9 @@ file(GLOB libdxfrw_intern_sources src/intern/*.cpp)
 
 # Find iconv library
 if(WIN32)
-    include_directories(vs2013/packages/libiconv.1.14.0.11/build/native/include)
-    link_directories(vs2013/packages/libiconv.1.14.0.11/build/native/lib)
+    set(ICONV_ROOT "C:/dev/vcpkg/installed/arm64-windows" CACHE PATH "Path to iconv installation directory")
+    include_directories(${ICONV_ROOT}/include)
+    link_directories(${ICONV_ROOT}/lib)
     set(ICONV_LIBRARY iconv)
 else()
     # On Unix-like systems (Linux, macOS)

@@ -2165,7 +2165,7 @@ bool dxfRW::processEntities(bool isblock) {
             processLWPolyline();
         } else if (nextentity == "POLYLINE") {
             processPolyline();
-        } else if (nextentity == "TEXT") {
+        } else if (nextentity == "TEXT" || nextentity == "ATTRIB" || nextentity == "ATTDEF") {
             processText();
         } else if (nextentity == "MTEXT") {
             processMText();
@@ -2538,15 +2538,24 @@ bool dxfRW::processText() {
     DRW_DBG("dxfRW::processText");
     int code;
     DRW_Text txt;
+    std::string tag;
+    std::string currentType = nextentity;
+
     while (reader->readRec(&code)) {
         DRW_DBG(code); DRW_DBG("\n");
         switch (code) {
         case 0: {
+            if (currentType == "ATTDEF" && !tag.empty()) {
+                txt.text = tag;
+            }
             nextentity = reader->getString();
             DRW_DBG(nextentity); DRW_DBG("\n");
             iface->addText(txt);
             return true;  //found new entity or ENDSEC, terminate
         }
+        case 2:
+            tag = reader->getUtf8String();
+            break;
         default:
             txt.parseCode(code, reader);
             break;

@@ -1939,22 +1939,28 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         gradientColors.push_back(gc);
         break;
     }
-    case 63: { // colour-stop ACI colour (fallback if no true colour given)
+    case 63: {
         int aci = reader->getInt32();
-        if (gradientColors.empty()) {
-            GradientColorData gc;
-            gc.unkDouble = 0.0;
-            gc.unkShort = 0;
-            gc.rgb = -1;
-            gc.ignored = 0;
-            gradientColors.push_back(gc);
-        }
-        GradientColorData &gc = gradientColors.back();
-        gc.unkShort = static_cast<duint16>(aci);
-        if (gc.rgb < 0) { /* only if 421 true colour not seen */
-            dint32 r = hatchAci2rgb(aci);
-            if (r >= 0)
-                gc.rgb = r;
+        if (isGradient == 0) {
+            /* Hatch background fill color (non-gradient context) */
+            bgColor = aci;
+        } else {
+            /* Gradient colour-stop ACI colour (fallback if no true colour given) */
+            if (gradientColors.empty()) {
+                GradientColorData gc;
+                gc.unkDouble = 0.0;
+                gc.unkShort = 0;
+                gc.rgb = -1;
+                gc.ignored = 0;
+                gradientColors.push_back(gc);
+            }
+            GradientColorData &gc = gradientColors.back();
+            gc.unkShort = static_cast<duint16>(aci);
+            if (gc.rgb < 0) { /* only if 421 true colour not seen */
+                dint32 r = hatchAci2rgb(aci);
+                if (r >= 0)
+                    gc.rgb = r;
+            }
         }
         break;
     }

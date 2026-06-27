@@ -949,6 +949,7 @@ public:
         solid = hpattern = 1;
         deflines = doubleflag = 0;
         loop = NULL;
+        bgColor = -1;
         isGradient = 0;
         gradientAngle = 0.0;
         gradientShift = 0.0;
@@ -979,6 +980,7 @@ public:
     int associative;           /*!< associativity, code 71, associatve=1, non-assoc.=0 */
     int hstyle;                /*!< hatch style, code 75 */
     int hpattern;              /*!< hatch pattern type, code 76 */
+    dint32 bgColor;            /*!< background fill color ACI, code 63 (non-gradient context), -1 if not set */
     int doubleflag;            /*!< hatch pattern double flag, code 77, double=1, single=0 */
     int loopsnum;              /*!< namber of boundary paths (loops), code 91 */
     double angle;              /*!< hatch pattern angle, code 52 */

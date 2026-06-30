@@ -2539,28 +2539,46 @@ bool dxfRW::processText() {
     int code;
     DRW_Text txt;
     std::string tag;
+    int attributeFlags = 0;
     std::string currentType = nextentity;
+    const bool isAttrib = currentType == "ATTRIB";
+    const bool isAttdef = currentType == "ATTDEF";
+
+    txt.isAttribute = isAttrib;
+    txt.isAttributeDefinition = isAttdef;
 
     while (reader->readRec(&code)) {
         DRW_DBG(code); DRW_DBG("\n");
         switch (code) {
         case 0: {
-            if (currentType == "ATTDEF" && !tag.empty()) {
-                txt.text = tag;
-            }
+            txt.attributeTag = tag;
+            txt.attributeFlags = attributeFlags;
             nextentity = reader->getString();
             DRW_DBG(nextentity); DRW_DBG("\n");
             iface->addText(txt);
             return true;  //found new entity or ENDSEC, terminate
         }
         case 2:
-            tag = reader->getUtf8String();
+            if (isAttrib || isAttdef) {
+                tag = reader->getUtf8String();
+            } else {
+                txt.parseCode(code, reader);
+            }
+            break;
+        case 70:
+            if (isAttrib || isAttdef) {
+                attributeFlags = reader->getInt32();
+            } else {
+                txt.parseCode(code, reader);
+            }
             break;
         default:
             txt.parseCode(code, reader);
             break;
         }
     }
+    txt.attributeTag = tag;
+    txt.attributeFlags = attributeFlags;
     return true;
 }
 

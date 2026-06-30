@@ -676,6 +676,9 @@ public:
         textgen = 0;
         alignH = HLeft;
         alignV = VBaseLine;
+        isAttribute = false;
+        isAttributeDefinition = false;
+        attributeFlags = 0;
     }
 
     virtual void applyExtrusion(){} //RLZ TODO
@@ -694,6 +697,10 @@ public:
     int textgen;               /*!< text generation, code 71 */
     enum HAlign alignH;        /*!< horizontal align, code 72 */
     enum VAlign alignV;        /*!< vertical align, code 73 */
+    bool isAttribute;          /*!< true when parsed from ATTRIB */
+    bool isAttributeDefinition;/*!< true when parsed from ATTDEF */
+    UTF8STRING attributeTag;   /*!< attribute tag, code 2 */
+    int attributeFlags;        /*!< attribute flags, code 70 */
     dwgHandle styleH;          /*!< handle for text style */
 };
 
